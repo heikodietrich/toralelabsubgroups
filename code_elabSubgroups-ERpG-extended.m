@@ -107,7 +107,9 @@ ToralElementaryAbelianSubgroups := function(type, p, exp : Isogeny := "SC")
 // TnewpCent lives in T_{(newp)}, which has exponent newp (= p^2 when p = 2, else p).
 // IsERp/IsMaximal need the actual p-torsion subgroup of the centraliser compared to p^exp
 // (not newp^exp, which for p = 2 tests a strictly stronger and different condition).
-   pTorsCent := [ { t : t in TnewpCent[i] | t^p eq Identity(Tnewp) } : i in [1..#orb] ];
+   pTorsCent := p eq 2
+       select [ { t : t in TnewpCent[i] | t^p eq Identity(Tnewp) } : i in [1..#orb] ]
+       else   TnewpCent;
 
 "compute IsMaximal";
    isMaximal := [];
@@ -158,7 +160,9 @@ ToralElementaryAbelianSubgroups := function(type, p, exp : Isogeny := "SC")
                       N_Y := Matrix(Znewp, [ Eltseq(Roots(D)[r]) : r in centrts_Y ]);
                       TnewpCent_Y := { inv(A ! [Integers()!x : x in Eltseq(a)]) : a in Kernel(Transpose(N_Y*Cmat)) };
                   end if;
-                  pTorsCent_Y := { t : t in TnewpCent_Y | t^p eq Identity(Tnewp) };
+                  pTorsCent_Y := p eq 2
+                      select { t : t in TnewpCent_Y | t^p eq Identity(Tnewp) }
+                      else   TnewpCent_Y;
 
                   if #pTorsCent_Y eq p^d then
                      foundWitness := true;
