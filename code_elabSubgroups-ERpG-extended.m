@@ -92,15 +92,16 @@ ToralElementaryAbelianSubgroups := function(type, p, exp : Isogeny := "SC")
 // alpha_r(t) = 1, i.e. sum_j a_j * <alpha_r, alpha_j^vee> = 0 mod newp.
 // So TnewpCent is the kernel of the linear map (ZZ/newp)^rk -> (ZZ/newp)^|centrts|
 // whose matrix is N*Cmat, where N has rows = simple-root coordinates of each centralised root.
-   D    := RootDatum(GLie);
-   Cmat := ChangeRing(CartanMatrix(D), Znewp);
+   D     := RootDatum(GLie);
+   Cmat  := ChangeRing(CartanMatrix(D), Znewp);
+   CmatT := Transpose(Cmat);
    TnewpCent := [];
    for i in [1..#orb] do
        if #centrts[i] eq 0 then
            Append(~TnewpCent, Set(Tnewp));
        else
            N := Matrix(Znewp, [ Eltseq(Roots(D)[r]) : r in centrts[i] ]);
-           Append(~TnewpCent, { inv(A ! [Integers()!x : x in Eltseq(a)]) : a in Kernel(Transpose(N*Cmat)) });
+           Append(~TnewpCent, { inv(A ! [Integers()!x : x in Eltseq(a)]) : a in Kernel(CmatT * Transpose(N)) });
        end if;
    end for;
 
@@ -158,7 +159,7 @@ ToralElementaryAbelianSubgroups := function(type, p, exp : Isogeny := "SC")
                       TnewpCent_Y := Set(Tnewp);
                   else
                       N_Y := Matrix(Znewp, [ Eltseq(Roots(D)[r]) : r in centrts_Y ]);
-                      TnewpCent_Y := { inv(A ! [Integers()!x : x in Eltseq(a)]) : a in Kernel(Transpose(N_Y*Cmat)) };
+                      TnewpCent_Y := { inv(A ! [Integers()!x : x in Eltseq(a)]) : a in Kernel(CmatT * Transpose(N_Y)) };
                   end if;
                   pTorsCent_Y := p eq 2
                       select { t : t in TnewpCent_Y | t^p eq Identity(Tnewp) }
