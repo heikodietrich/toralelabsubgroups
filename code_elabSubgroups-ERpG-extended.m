@@ -79,22 +79,25 @@ if Verbose then "determine types of subgroups"; end if;
    types    := [findDist(O[2]) : O in orb];
 
 if Verbose then "start centraliser"; end if;
-if Verbose then "genset"; end if;
-   genset  := [ [ inv(i) : i in [A!Eltseq(j) : j in Basis(v[2])] ] : v in orb];
-
 if Verbose then "centrts"; end if;
-   rootmats := [ std(elt< GLie | [<i,1>]>) : i in [1..#Roots(GLie)] ];
-   centrts := [   { i : i in [1..#Roots(GLie)] |
-                    forall(t){t: t in genset[k] |
-                              ELT*t eq t*ELT} where ELT := rootmats[i]}
+// x_r(1) centralises torus element with coord a iff Roots(D)[r] * CartanMatrix * a = 0 mod newp
+   D      := RootDatum(GLie);
+   CmatZn := ChangeRing(CartanMatrix(D), Znewp);
+   NallCn := Matrix(Znewp, [[Znewp!c : c in Eltseq(Roots(D)[r])] : r in [1..#Roots(GLie)]]) * CmatZn;
+   coordmats := [ Matrix(Znewp, #Basis(orb[k][2]), Rank(GLie),
+                         &cat[Eltseq(v) : v in Basis(orb[k][2])])
                 : k in [1..#orb] ];
+   centrts := [];
+   for k in [1..#orb] do
+       M := NallCn * Transpose(coordmats[k]);
+       Append(~centrts, { r : r in [1..#Roots(GLie)] | IsZero(M[r]) });
+   end for;
 
 if Verbose then "sizePTorsCent"; end if;
 // The number of p-torsion torus elements centralising a subspace with root set centrts_X
 // equals p^(rk - Rank(Np * Cp)), where Np has rows = root coords mod p and Cp = CartanMatrix
 // mod p. This is uniform in p: for p=2 (newp=4) the p-torsion of the T_(4) kernel bijects
 // to the GF(2) kernel of N*Cmat mod 2, giving the same formula.
-   D  := RootDatum(GLie);
    Cp := ChangeRing(CartanMatrix(D), GF(p));
    sizePTorsCent := [];
    for i in [1..#orb] do
@@ -143,12 +146,10 @@ if Verbose then "compute IsMaximal"; end if;
                   Ysub_lift := sub<Snewp | [((p eq 2) select 2 else 1)*y
                                  : y in [Snewp![Integers()!u : u in Eltseq(e)]
                                          : e in Basis(Ysub)]]>;
-                  genset_Y  := [ inv(j) : j in [A!Eltseq(k) : k in Basis(Ysub_lift)] ];
-                  centrts_Y := centrts[i] join
-                               { r : r in [1..#Roots(GLie)] | r notin centrts[i] and
-                                 forall(t){t : t in genset_Y | ELT*t eq t*ELT
-                                           where ELT := rootmats[r]}
-                               };
+                  coordmat_Y := Matrix(Znewp, #Basis(Ysub_lift), Rank(GLie),
+                                       &cat[Eltseq(v) : v in Basis(Ysub_lift)]);
+                  M_Y       := NallCn * Transpose(coordmat_Y);
+                  centrts_Y := { r : r in [1..#Roots(GLie)] | IsZero(M_Y[r]) };
                   if #centrts_Y eq 0 then
                       sizePTorsCent_Y := p^Rank(GLie);
                   else
@@ -177,9 +178,9 @@ if Verbose then "weylsubgens"; end if;
                     : k in [1..#orb] ];
 
 if Verbose then "weylsubs"; end if;
-   weylsubs := [    sub< Wnewp | [  GL(Rank(GLie),Znewp)!&cat[Eltseq((i^w)@iso) : i in UserGenerators(Tnewp)]
-                                : w in ww] >
-                 : ww in weylsubgens];
+   weylsubs := [   sub< Wnewp | [  GL(Rank(GLie),Znewp)!&cat[Eltseq((i^w)@iso) : i in UserGenerators(Tnewp)]
+                               : w in weylsubgens[k]] >
+                : k in [1..#orb] ];
 
 if Verbose then "cents"; end if;
    cents    := [ sub< D | centrts[k] > : k in [1..#orb] ];
@@ -191,7 +192,7 @@ if Verbose then "compute outer quotient"; end if;
 
 
 if Verbose then "computes component group of centraliser"; end if;
-   for i in [1..#orb] do new[i] := quo<CW[i]|weylsubs[i]>; end for;
+   for i in [1..#orb] do new[i] := quo<CW[i] | CW[i] meet weylsubs[i]>; end for;
    CW := new;
 
 if Verbose then "output results"; end if;
