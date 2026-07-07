@@ -87,35 +87,27 @@ ToralElementaryAbelianSubgroups := function(type, p, exp : Isogeny := "SC")
                               ELT*t eq t*ELT} where ELT := rootmats[i]}
                 : k in [1..#orb] ];
 
-"TnewpCent";
-// A torus element t = prod h_i(zeta^{(q-1)/newp * a_i}) commutes with x_{alpha_r}(1) iff
-// alpha_r(t) = 1, i.e. sum_j a_j * <alpha_r, alpha_j^vee> = 0 mod newp.
-// So TnewpCent is the kernel of the linear map (ZZ/newp)^rk -> (ZZ/newp)^|centrts|
-// whose matrix is N*Cmat, where N has rows = simple-root coordinates of each centralised root.
-   D     := RootDatum(GLie);
-   Cmat  := ChangeRing(CartanMatrix(D), Znewp);
-   CmatT := Transpose(Cmat);
-   TnewpCent := [];
+"sizePTorsCent";
+// The number of p-torsion torus elements centralising a subspace with root set centrts_X
+// equals p^(rk - Rank(Np * Cp)), where Np has rows = root coords mod p and Cp = CartanMatrix
+// mod p. This is uniform in p: for p=2 (newp=4) the p-torsion of the T_(4) kernel bijects
+// to the GF(2) kernel of N*Cmat mod 2, giving the same formula.
+   D  := RootDatum(GLie);
+   Cp := ChangeRing(CartanMatrix(D), GF(p));
+   sizePTorsCent := [];
    for i in [1..#orb] do
        if #centrts[i] eq 0 then
-           Append(~TnewpCent, Set(Tnewp));
+           Append(~sizePTorsCent, p^Rank(GLie));
        else
-           N := Matrix(Znewp, [ Eltseq(Roots(D)[r]) : r in centrts[i] ]);
-           Append(~TnewpCent, { inv(A ! [Integers()!x : x in Eltseq(a)]) : a in Kernel(CmatT * Transpose(N)) });
+           Np := Matrix(GF(p), [ [GF(p)!c : c in Eltseq(Roots(D)[r])] : r in centrts[i] ]);
+           Append(~sizePTorsCent, p^(Rank(GLie) - Rank(Np * Cp)));
        end if;
    end for;
-
-// TnewpCent lives in T_{(newp)}, which has exponent newp (= p^2 when p = 2, else p).
-// IsERp/IsMaximal need the actual p-torsion subgroup of the centraliser compared to p^exp
-// (not newp^exp, which for p = 2 tests a strictly stronger and different condition).
-   pTorsCent := p eq 2
-       select [ { t : t in TnewpCent[i] | t^p eq Identity(Tnewp) } : i in [1..#orb] ]
-       else   TnewpCent;
 
 "compute IsMaximal";
    isMaximal := [];
    for i in [1..#orb] do
-      if #pTorsCent[i] eq p^exp then
+      if sizePTorsCent[i] eq p^exp then
          Vp_i   := orb_Vp[i];
          H_i    := Stabiliser(Wp, Vp_i);
          n      := exp;
@@ -156,16 +148,13 @@ ToralElementaryAbelianSubgroups := function(type, p, exp : Isogeny := "SC")
                                            where ELT := rootmats[r]}
                                };
                   if #centrts_Y eq 0 then
-                      TnewpCent_Y := Set(Tnewp);
+                      sizePTorsCent_Y := p^Rank(GLie);
                   else
-                      N_Y := Matrix(Znewp, [ Eltseq(Roots(D)[r]) : r in centrts_Y ]);
-                      TnewpCent_Y := { inv(A ! [Integers()!x : x in Eltseq(a)]) : a in Kernel(CmatT * Transpose(N_Y)) };
+                      Np_Y := Matrix(GF(p), [ [GF(p)!c : c in Eltseq(Roots(D)[r])] : r in centrts_Y ]);
+                      sizePTorsCent_Y := p^(Rank(GLie) - Rank(Np_Y * Cp));
                   end if;
-                  pTorsCent_Y := p eq 2
-                      select { t : t in TnewpCent_Y | t^p eq Identity(Tnewp) }
-                      else   TnewpCent_Y;
 
-                  if #pTorsCent_Y eq p^d then
+                  if sizePTorsCent_Y eq p^d then
                      foundWitness := true;
                      break;
                   end if;
@@ -205,7 +194,7 @@ ToralElementaryAbelianSubgroups := function(type, p, exp : Isogeny := "SC")
 
 "output results";
    res := [**];
-   for i in [1..#orb] do Append(~res, [*types[i], cents[i], CW[i], NW[i], #pTorsCent[i], isMaximal[i] *]); end for;
+   for i in [1..#orb] do Append(~res, [*types[i], cents[i], CW[i], NW[i], sizePTorsCent[i], isMaximal[i] *]); end for;
 
 "type -- connected cent -- component grp cent -- out -- IsERp -- IsMaximal";
    [ < i[1], CartanName(i[2]), #i[3], #i[4], i[5] eq p^exp, i[6] > : i in res];
@@ -218,11 +207,10 @@ end function;
    This code has been extended relative to the GitHub-published version in two ways:
 
    (1) IsERp: indicated whether E lies in ERp(G), i.e. E = Omega_1(Z(O_p(N_G(E)))). This is detected
-       by checking whether the set pTorsCent of p-torsion elements of T_{(newp)} centralising
-       C_G(E)^circ has size exactly p^exp = |E|. (TnewpCent itself lives in T_{(newp)}, which has
-       exponent newp = p^2 when p = 2, so its raw size must not be compared to newp^exp in that
-       case; pTorsCent is the actual p-torsion subgroup of T_{(newp)}, i.e. T_{(p)}, restricted to
-       elements centralising C_G(E)^circ.)
+       by checking whether sizePTorsCent = p^exp, where sizePTorsCent = p^(rk - Rank(Np * Cp)) with
+       Np having rows = root coords mod p and Cp = CartanMatrix mod p. This formula counts p-torsion
+       torus elements centralising C_G(E)^circ uniformly for all p: for p=2 (newp=4) the p-torsion
+       of the T_(4) kernel bijects to the GF(2) kernel of N*Cmat mod 2.
 
    (2) IsMaximal: a boolean flag indicating whether N_G(E) is a proper-maximal p-local subgroup of G
        (for toral E in ERp(G)). This is calculating using a deterministic search for witnesses to
