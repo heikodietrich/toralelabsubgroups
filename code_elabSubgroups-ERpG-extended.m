@@ -51,7 +51,9 @@ ToralElementaryAbelianSubgroups := function(type, p, exp : Isogeny := "SC")
    cl   := [i[1] : i in orbs]; 
 
    //identify class of elts
-   class     := func<x | exists(i){i : i in [1..#cl] | x in orbs[i]} select i else false>;
+   classMap := AssociativeArray();
+   for i in [1..#orbs] do for x in orbs[i] do classMap[x] := i; end for; end for;
+   class    := func<x | IsDefined(classMap, x) select classMap[x] else false>;
 
 "compute W-classes of subgroups";
    Snewp   := Parent(orbs[1][1]);
