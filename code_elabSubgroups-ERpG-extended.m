@@ -1,9 +1,9 @@
-ToralElementaryAbelianSubgroups := function(type, p, exp : Isogeny := "SC")
+ToralElementaryAbelianSubgroups := function(type, p, exp : Isogeny := "SC", Verbose := false)
 
 // to deal with p=2 case
   if p eq 2 then newp := p^2; else newp := p; end if;
 
-"set up Weyl group etc"; 
+if Verbose then "set up Weyl group etc"; end if;
    q := 1;
    repeat q +:= newp; until #PrimeDivisors(q) eq 1;
    GLie := GroupOfLieType(type,q : Isogeny := Isogeny);
@@ -24,12 +24,12 @@ ToralElementaryAbelianSubgroups := function(type, p, exp : Isogeny := "SC")
    end if;
 
 // W is the 'extended' Weyl group
-   V    := sub< Codomain(std) | 
+   V    := sub< Codomain(std) |
                 [   elt<GLie | x >@std : x in [1..Rank(GLie)] ] >;
    T    := sub< Codomain(std) | Generators(StandardMaximalTorus(GLie))@std >;
    Tnewp   := sub< Codomain(std) | [t^((q-1) div newp) : t in UserGenerators(T)]>;
    A    := AbelianGroup([ newp : i in [1..Rank(GLie)]]);
-   iso  := hom<Tnewp->A | [<UserGenerators(Tnewp)[i],UserGenerators(A)[i]> : i in [1..Rank(GLie)]]>; 
+   iso  := hom<Tnewp->A | [<UserGenerators(Tnewp)[i],UserGenerators(A)[i]> : i in [1..Rank(GLie)]]>;
    inv  := iso^-1;
 
 // WRed is the actual Weyl group; the quotient of W by its intersection with T
@@ -41,21 +41,21 @@ ToralElementaryAbelianSubgroups := function(type, p, exp : Isogeny := "SC")
    VtoWnewp := hom< V -> GL(Rank(GLie),Znewp) |
                     x :-> GL(Rank(GLie),Znewp)!&cat[Eltseq((i^x)@iso) : i in UserGenerators(Tnewp)]>;
    Wnewp    := sub< GL(Rank(GLie),Znewp) | [VtoWnewp(i):i in UserGenerators(V)]>;
-   VtoWp    := hom< V -> GL(Rank(GLie),p) | 
+   VtoWp    := hom< V -> GL(Rank(GLie),p) |
                     x :-> GL(Rank(GLie),p)!&cat[Eltseq((i^x)@iso) : i in UserGenerators(Tnewp)]>;
    Wp       := sub< GL(Rank(GLie),p) | [VtoWp(i):i in UserGenerators(V)]>;
-   
-"compute W-classes of order p elements";
+
+if Verbose then "compute W-classes of order p elements"; end if;
    orbs := [i : i in Orbits(Wnewp) | forall(j){j : j in i | p*j eq 0*j}
                                      and not (#i eq 1 and i[1] eq 0*i[1])];
-   cl   := [i[1] : i in orbs]; 
+   cl   := [i[1] : i in orbs];
 
    //identify class of elts
    classMap := AssociativeArray();
    for i in [1..#orbs] do for x in orbs[i] do classMap[x] := i; end for; end for;
    class    := func<x | IsDefined(classMap, x) select classMap[x] else false>;
 
-"compute W-classes of subgroups";
+if Verbose then "compute W-classes of subgroups"; end if;
    Snewp   := Parent(orbs[1][1]);
    orb_raw := OrbitsOfSpaces(Wp,exp);
    orb_Vp  := [i[2] : i in orb_raw];
@@ -73,23 +73,23 @@ ToralElementaryAbelianSubgroups := function(type, p, exp : Isogeny := "SC")
       Append(~CW,Y);
    end for;
 
-"determine types of subgroups";
+if Verbose then "determine types of subgroups"; end if;
    findDist := func<x| [  Multiplicity({* class(j) : j in [v : v in x | not v eq 0*v] *},i)
                           : i in [1..#orbs]]>;
    types    := [findDist(O[2]) : O in orb];
 
-"start centraliser";
-"genset";
-   genset  := [ [ inv(i) : i in [A!Eltseq(j) : j in Basis(v[2])] ] : v in orb];  
+if Verbose then "start centraliser"; end if;
+if Verbose then "genset"; end if;
+   genset  := [ [ inv(i) : i in [A!Eltseq(j) : j in Basis(v[2])] ] : v in orb];
 
-"centrts";
+if Verbose then "centrts"; end if;
    rootmats := [ std(elt< GLie | [<i,1>]>) : i in [1..#Roots(GLie)] ];
    centrts := [   { i : i in [1..#Roots(GLie)] |
                     forall(t){t: t in genset[k] |
                               ELT*t eq t*ELT} where ELT := rootmats[i]}
                 : k in [1..#orb] ];
 
-"sizePTorsCent";
+if Verbose then "sizePTorsCent"; end if;
 // The number of p-torsion torus elements centralising a subspace with root set centrts_X
 // equals p^(rk - Rank(Np * Cp)), where Np has rows = root coords mod p and Cp = CartanMatrix
 // mod p. This is uniform in p: for p=2 (newp=4) the p-torsion of the T_(4) kernel bijects
@@ -106,7 +106,7 @@ ToralElementaryAbelianSubgroups := function(type, p, exp : Isogeny := "SC")
        end if;
    end for;
 
-"compute IsMaximal";
+if Verbose then "compute IsMaximal"; end if;
    isMaximal := [];
    for i in [1..#orb] do
       if sizePTorsCent[i] eq p^exp then
@@ -169,37 +169,39 @@ ToralElementaryAbelianSubgroups := function(type, p, exp : Isogeny := "SC")
       end if;
    end for;
 
-"weylsubgens";
-   weylsubgens := [   [   std(elt< GLie | [<i,1>,<i in [1..#PositiveRoots(GLie)] 
-                          select i+#PositiveRoots(GLie) 
-                          else i-#PositiveRoots(GLie),-1>,<i,1>]>) 
-                        : i in centrts[k] ] 
+if Verbose then "weylsubgens"; end if;
+   weylsubgens := [   [   std(elt< GLie | [<i,1>,<i in [1..#PositiveRoots(GLie)]
+                          select i+#PositiveRoots(GLie)
+                          else i-#PositiveRoots(GLie),-1>,<i,1>]>)
+                        : i in centrts[k] ]
                     : k in [1..#orb] ];
 
-"weylsubs";
-   weylsubs := [    sub< Wnewp | [  GL(Rank(GLie),Znewp)!&cat[Eltseq((i^w)@iso) : i in UserGenerators(Tnewp)] 
-                                : w in ww] > 
+if Verbose then "weylsubs"; end if;
+   weylsubs := [    sub< Wnewp | [  GL(Rank(GLie),Znewp)!&cat[Eltseq((i^w)@iso) : i in UserGenerators(Tnewp)]
+                                : w in ww] >
                  : ww in weylsubgens];
 
-"cents";
+if Verbose then "cents"; end if;
    cents    := [ sub< D | centrts[k] > : k in [1..#orb] ];
 
-"compute outer quotient";
+if Verbose then "compute outer quotient"; end if;
    new := [];
    for i in [1..#orb] do new[i] := quo<NW[i]|CW[i]>; end for;
    NW  := new;
 
 
-"computes component group of centraliser";
+if Verbose then "computes component group of centraliser"; end if;
    for i in [1..#orb] do new[i] := quo<CW[i]|weylsubs[i]>; end for;
    CW := new;
 
-"output results";
+if Verbose then "output results"; end if;
    res := [**];
    for i in [1..#orb] do Append(~res, [*types[i], cents[i], CW[i], NW[i], sizePTorsCent[i], isMaximal[i] *]); end for;
 
-"type -- connected cent -- component grp cent -- out -- IsERp -- IsMaximal";
+if Verbose then
+   "type -- connected cent -- component grp cent -- out -- IsERp -- IsMaximal";
    [ < i[1], CartanName(i[2]), #i[3], #i[4], i[5] eq p^exp, i[6] > : i in res];
+end if;
 
    return res;
 
