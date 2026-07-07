@@ -81,14 +81,28 @@ ToralElementaryAbelianSubgroups := function(type, p, exp : Isogeny := "SC")
    genset  := [ [ inv(i) : i in [A!Eltseq(j) : j in Basis(v[2])] ] : v in orb];  
 
 "centrts";
-   centrts := [   { i : i in [1..#Roots(GLie)] | 
-                    forall(t){t: t in genset[k] | 
-                              ELT*t eq t*ELT} where ELT := std(elt< GLie | [<i,1>]>)}
+   rootmats := [ std(elt< GLie | [<i,1>]>) : i in [1..#Roots(GLie)] ];
+   centrts := [   { i : i in [1..#Roots(GLie)] |
+                    forall(t){t: t in genset[k] |
+                              ELT*t eq t*ELT} where ELT := rootmats[i]}
                 : k in [1..#orb] ];
 
 "TnewpCent";
-   TnewpCent := [ { t : t in Tnewp | forall(r){r : r in centrts[i] | ELT*t eq t*ELT
-   where ELT := std(elt< GLie | [<r,1>]>)} } : i in [1..#orb] ];
+// A torus element t = prod h_i(zeta^{(q-1)/newp * a_i}) commutes with x_{alpha_r}(1) iff
+// alpha_r(t) = 1, i.e. sum_j a_j * <alpha_r, alpha_j^vee> = 0 mod newp.
+// So TnewpCent is the kernel of the linear map (ZZ/newp)^rk -> (ZZ/newp)^|centrts|
+// whose matrix is N*Cmat, where N has rows = simple-root coordinates of each centralised root.
+   D    := RootDatum(GLie);
+   Cmat := ChangeRing(CartanMatrix(D), Znewp);
+   TnewpCent := [];
+   for i in [1..#orb] do
+       if #centrts[i] eq 0 then
+           Append(~TnewpCent, Set(Tnewp));
+       else
+           N := Matrix(Znewp, [ Eltseq(Roots(D)[r]) : r in centrts[i] ]);
+           Append(~TnewpCent, { inv(A ! [Integers()!x : x in Eltseq(a)]) : a in Kernel(Transpose(N*Cmat)) });
+       end if;
+   end for;
 
 // TnewpCent lives in T_{(newp)}, which has exponent newp (= p^2 when p = 2, else p).
 // IsERp/IsMaximal need the actual p-torsion subgroup of the centraliser compared to p^exp
@@ -135,12 +149,14 @@ ToralElementaryAbelianSubgroups := function(type, p, exp : Isogeny := "SC")
                   genset_Y  := [ inv(j) : j in [A!Eltseq(k) : k in Basis(Ysub_lift)] ];
                   centrts_Y := { r : r in [1..#Roots(GLie)] |
                                  forall(t){t : t in genset_Y | ELT*t eq t*ELT
-                                           where ELT := std(elt< GLie | [<r,1>]>)}
+                                           where ELT := rootmats[r]}
                                };
-                  TnewpCent_Y := { t : t in Tnewp | forall(s){s : s in centrts_Y |
-                                   ELT*t eq t*ELT
-                                   where ELT := std(elt< GLie | [<s,1>]>)}
-                                 };
+                  if #centrts_Y eq 0 then
+                      TnewpCent_Y := Set(Tnewp);
+                  else
+                      N_Y := Matrix(Znewp, [ Eltseq(Roots(D)[r]) : r in centrts_Y ]);
+                      TnewpCent_Y := { inv(A ! [Integers()!x : x in Eltseq(a)]) : a in Kernel(Transpose(N_Y*Cmat)) };
+                  end if;
                   pTorsCent_Y := { t : t in TnewpCent_Y | t^p eq Identity(Tnewp) };
 
                   if #pTorsCent_Y eq p^d then
@@ -169,7 +185,7 @@ ToralElementaryAbelianSubgroups := function(type, p, exp : Isogeny := "SC")
                  : ww in weylsubgens];
 
 "cents";
-   cents    := [ sub< RootDatum(GLie) | centrts[k] > : k in [1..#orb] ];
+   cents    := [ sub< D | centrts[k] > : k in [1..#orb] ];
 
 "compute outer quotient";
    new := [];
