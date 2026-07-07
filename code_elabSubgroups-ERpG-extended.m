@@ -81,19 +81,19 @@ ToralElementaryAbelianSubgroups := function(type, p, exp : Isogeny := "SC")
    genset  := [ [ inv(i) : i in [A!Eltseq(j) : j in Basis(v[2])] ] : v in orb];  
 
 "centrts";
-// x_r(1) commutes with torus element with coord vector a iff Roots(D)[r] . Cmat . a = 0 mod newp.
-   D     := RootDatum(GLie);
-   Cmat  := ChangeRing(CartanMatrix(D), Znewp);
-   B_mats  := [ Matrix(Znewp, [Eltseq(b) : b in Basis(orb_Vp[i])]) * Cmat : i in [1..#orb] ];
-   centrts := [ { r : r in [1..#Roots(GLie)] |
-                  IsZero(Matrix(Znewp, [Eltseq(Roots(D)[r])]) * Transpose(B_mats[k])) }
-              : k in [1..#orb] ];
+   rootmats := [ std(elt< GLie | [<i,1>]>) : i in [1..#Roots(GLie)] ];
+   centrts := [   { i : i in [1..#Roots(GLie)] |
+                    forall(t){t: t in genset[k] |
+                              ELT*t eq t*ELT} where ELT := rootmats[i]}
+                : k in [1..#orb] ];
 
 "TnewpCent";
 // A torus element t = prod h_i(zeta^{(q-1)/newp * a_i}) commutes with x_{alpha_r}(1) iff
 // alpha_r(t) = 1, i.e. sum_j a_j * <alpha_r, alpha_j^vee> = 0 mod newp.
 // So TnewpCent is the kernel of the linear map (ZZ/newp)^rk -> (ZZ/newp)^|centrts|
 // whose matrix is N*Cmat, where N has rows = simple-root coordinates of each centralised root.
+   D    := RootDatum(GLie);
+   Cmat := ChangeRing(CartanMatrix(D), Znewp);
    TnewpCent := [];
    for i in [1..#orb] do
        if #centrts[i] eq 0 then
@@ -146,9 +146,12 @@ ToralElementaryAbelianSubgroups := function(type, p, exp : Isogeny := "SC")
                   Ysub_lift := sub<Snewp | [((p eq 2) select 2 else 1)*y
                                  : y in [Snewp![Integers()!u : u in Eltseq(e)]
                                          : e in Basis(Ysub)]]>;
-                  B_Y       := Matrix(Znewp, [Eltseq(b) : b in Basis(Ysub_lift)]) * Cmat;
-                  centrts_Y := { r : r in [1..#Roots(GLie)] |
-                                 IsZero(Matrix(Znewp, [Eltseq(Roots(D)[r])]) * Transpose(B_Y)) };
+                  genset_Y  := [ inv(j) : j in [A!Eltseq(k) : k in Basis(Ysub_lift)] ];
+                  centrts_Y := centrts[i] join
+                               { r : r in [1..#Roots(GLie)] | r notin centrts[i] and
+                                 forall(t){t : t in genset_Y | ELT*t eq t*ELT
+                                           where ELT := rootmats[r]}
+                               };
                   if #centrts_Y eq 0 then
                       TnewpCent_Y := Set(Tnewp);
                   else
