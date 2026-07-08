@@ -80,32 +80,37 @@ if Verbose then "determine types of subgroups"; end if;
 
 if Verbose then "start centraliser"; end if;
 if Verbose then "centrts"; end if;
-// x_r(1) centralises torus element with coord a iff Roots(D)[r] * CartanMatrix * a = 0 mod newp
-   D      := RootDatum(GLie);
-   CmatZn := ChangeRing(CartanMatrix(D), Znewp);
-   NallCn := Matrix(Znewp, [[Znewp!c : c in Eltseq(Roots(D)[r])] : r in [1..#Roots(GLie)]]) * CmatZn;
+// x_r(1) centralises the torus element with coord vector a iff rootpair[r] * a = 0 mod newp,
+// where rootpair[r] = coordinates of alpha_r in the standard basis of the character
+// lattice X (the torus generators correspond to the standard basis of the cocharacter
+// lattice Y). This is isogeny-dependent: for "SC" the standard coordinates equal
+// (root coefficients)*CartanMatrix, but for "Ad" the simple roots ARE the standard basis
+// of X, so hard-coding a Cartan-matrix product here is wrong for adjoint groups.
+   D        := RootDatum(GLie);
+   rootpair := [ [ Integers()!x : x in Eltseq(v) ] : v in Roots(D : Basis := "Standard") ];
+   NallZn   := Matrix(Znewp, [ rootpair[r] : r in [1..#Roots(GLie)] ]);
    coordmats := [ Matrix(Znewp, #Basis(orb[k][2]), Rank(GLie),
                          &cat[Eltseq(v) : v in Basis(orb[k][2])])
                 : k in [1..#orb] ];
    centrts := [ PowerSet(IntegerRing()) | ];
    for k in [1..#orb] do
-       M := NallCn * Transpose(coordmats[k]);
+       M := NallZn * Transpose(coordmats[k]);
        Append(~centrts, { r : r in [1..#Roots(GLie)] | IsZero(M[r]) });
    end for;
 
 if Verbose then "sizePTorsCent"; end if;
 // The number of p-torsion torus elements centralising a subspace with root set centrts_X
-// equals p^(rk - Rank(Np * Cp)), where Np has rows = root coords mod p and Cp = CartanMatrix
-// mod p. This is uniform in p: for p=2 (newp=4) the p-torsion of the T_(4) kernel bijects
-// to the GF(2) kernel of N*Cmat mod 2, giving the same formula.
-   Cp := ChangeRing(CartanMatrix(D), GF(p));
+// equals p^(rk - Rank(Np)), where Np has rows = standard-basis root coordinates mod p
+// (rootpair, as above — isogeny-dependent). This is uniform in p: for p=2 (newp=4) the
+// p-torsion of the T_(4) kernel bijects to the GF(2) kernel of Np mod 2, giving the
+// same formula.
    sizePTorsCent := [];
    for i in [1..#orb] do
        if #centrts[i] eq 0 then
            Append(~sizePTorsCent, p^Rank(GLie));
        else
-           Np := Matrix(GF(p), [ [GF(p)!c : c in Eltseq(Roots(D)[r])] : r in centrts[i] ]);
-           Append(~sizePTorsCent, p^(Rank(GLie) - Rank(Np * Cp)));
+           Np := Matrix(GF(p), [ rootpair[r] : r in centrts[i] ]);
+           Append(~sizePTorsCent, p^(Rank(GLie) - Rank(Np)));
        end if;
    end for;
 
@@ -148,13 +153,13 @@ if Verbose then "compute IsMaximal"; end if;
                                          : e in Basis(Ysub)]]>;
                   coordmat_Y := Matrix(Znewp, #Basis(Ysub_lift), Rank(GLie),
                                        &cat[Eltseq(v) : v in Basis(Ysub_lift)]);
-                  M_Y       := NallCn * Transpose(coordmat_Y);
+                  M_Y       := NallZn * Transpose(coordmat_Y);
                   centrts_Y := { r : r in [1..#Roots(GLie)] | IsZero(M_Y[r]) };
                   if #centrts_Y eq 0 then
                       sizePTorsCent_Y := p^Rank(GLie);
                   else
-                      Np_Y := Matrix(GF(p), [ [GF(p)!c : c in Eltseq(Roots(D)[r])] : r in centrts_Y ]);
-                      sizePTorsCent_Y := p^(Rank(GLie) - Rank(Np_Y * Cp));
+                      Np_Y := Matrix(GF(p), [ rootpair[r] : r in centrts_Y ]);
+                      sizePTorsCent_Y := p^(Rank(GLie) - Rank(Np_Y));
                   end if;
 
                   if sizePTorsCent_Y eq p^d then
@@ -230,10 +235,13 @@ end function;
    This code has been extended relative to the GitHub-published version in two ways:
 
    (1) IsERp: indicated whether E lies in ERp(G), i.e. E = Omega_1(Z(O_p(N_G(E)))). This is detected
-       by checking whether sizePTorsCent = p^exp, where sizePTorsCent = p^(rk - Rank(Np * Cp)) with
-       Np having rows = root coords mod p and Cp = CartanMatrix mod p. This formula counts p-torsion
-       torus elements centralising C_G(E)^circ uniformly for all p: for p=2 (newp=4) the p-torsion
-       of the T_(4) kernel bijects to the GF(2) kernel of N*Cmat mod 2.
+       by checking whether sizePTorsCent = p^exp, where sizePTorsCent = p^(rk - Rank(Np)) with
+       Np having rows = the coordinates mod p of the centralised roots in the standard basis of
+       the character lattice X (Roots(D : Basis := "Standard")). These coordinates are
+       isogeny-dependent: (root coefficients)*CartanMatrix for "SC", the root coefficients
+       themselves for "Ad". The formula counts p-torsion torus elements centralising C_G(E)^circ
+       uniformly for all p: for p=2 (newp=4) the p-torsion of the T_(4) kernel bijects to the
+       GF(2) kernel of Np mod 2.
 
    (2) IsMaximal: a boolean flag indicating whether N_G(E) is a proper-maximal p-local subgroup of G
        (for toral E in ERp(G)). This is calculating using a deterministic search for witnesses to
