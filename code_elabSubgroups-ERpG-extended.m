@@ -186,13 +186,31 @@ if Verbose then "cents"; end if;
    cents    := [ sub< D | centrts[k] > : k in [1..#orb] ];
 
 if Verbose then "compute outer quotient"; end if;
+// NW[i]/CW[i] is the image of NW[i] acting on E: CW[i] is exactly the kernel of that
+// action, so compute the image in GL(exp,p) directly instead of quo<> (which forces
+// Magma to build a permutation representation / presentation of the matrix group NW[i]).
+// For p=2 the action on E = 2*L < (Z/4)^rk factors through the mod-2 reduction on Vp.
    new := [];
-   for i in [1..#orb] do new[i] := quo<NW[i]|CW[i]>; end for;
-   NW  := new;
+   for i in [1..#orb] do
+      Vp_i := orb_Vp[i];
+      B    := Basis(Vp_i);
+      gens := [];
+      for g in Generators(NW[i]) do
+         gp   := Matrix(GF(p), Rank(GLie), Rank(GLie),
+                        [GF(p)!(Integers()!e) : e in Eltseq(g)]);
+         rows := [Coordinates(Vp_i, B[j] * gp) : j in [1..exp]];
+         Append(~gens, Matrix(GF(p), exp, exp, rows));
+      end for;
+      new[i] := sub<GL(exp, GF(p)) | gens>;
+   end for;
+   NW := new;
 
 
 if Verbose then "computes component group of centraliser"; end if;
-   for i in [1..#orb] do new[i] := quo<CW[i] | CW[i] meet weylsubs[i]>; end for;
+// CW[i] meet weylsubs[i] is normal of small index in CW[i]; CosetImage acts on the few
+// cosets directly, avoiding the expensive matrix-group quo<> constructor.
+   new := [];
+   for i in [1..#orb] do new[i] := CosetImage(CW[i], CW[i] meet weylsubs[i]); end for;
    CW := new;
 
 if Verbose then "output results"; end if;
