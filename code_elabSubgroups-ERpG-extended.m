@@ -87,7 +87,7 @@ if Verbose then "centrts"; end if;
    coordmats := [ Matrix(Znewp, #Basis(orb[k][2]), Rank(GLie),
                          &cat[Eltseq(v) : v in Basis(orb[k][2])])
                 : k in [1..#orb] ];
-   centrts := [];
+   centrts := [ PowerSet(IntegerRing()) | ];
    for k in [1..#orb] do
        M := NallCn * Transpose(coordmats[k]);
        Append(~centrts, { r : r in [1..#Roots(GLie)] | IsZero(M[r]) });
